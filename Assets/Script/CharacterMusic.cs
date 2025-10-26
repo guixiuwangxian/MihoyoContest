@@ -10,6 +10,7 @@ public class CharacterMusicController : MonoBehaviour
         public string name;
         public string leftHoldSignal;  // 左键长按信号
         public string rightHoldSignal; // 右键长按信号
+        public Sprite icon;
     }
 
     public List<Instruments> 乐器 = new List<Instruments>();
