@@ -339,6 +339,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: BountyHunterRIO2
       objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: c207202fdaf327549a88f878a897e0ab, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 635f72503b179844787ee75ca2424923, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1400,33 +1404,9 @@ MonoBehaviour:
   m_Mesh: {fileID: 566957509}
   m_VersionIndex: 895
   m_IsSelectable: 1
-  m_SelectedFaces: 0f0000001500000001000000
-  m_SelectedEdges:
-  - a: 60
-    b: 61
-  - a: 62
-    b: 60
-  - a: 61
-    b: 63
-  - a: 63
-    b: 62
-  - a: 84
-    b: 85
-  - a: 86
-    b: 84
-  - a: 85
-    b: 87
-  - a: 87
-    b: 86
-  - a: 4
-    b: 5
-  - a: 6
-    b: 4
-  - a: 5
-    b: 7
-  - a: 7
-    b: 6
-  m_SelectedVertices: 3c0000003d0000003e0000003f0000005400000055000000560000005700000004000000050000000600000007000000
+  m_SelectedFaces: 
+  m_SelectedEdges: []
+  m_SelectedVertices: 
 --- !u!4 &887295647
 Transform:
   m_ObjectHideFlags: 0
@@ -1537,6 +1517,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1171446893}
   - component: {fileID: 1171446894}
+  - component: {fileID: 1171446895}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1587,6 +1568,29 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &1171446895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1171446891}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2291ef04f980d7e4aa6234f1cfa28ca1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  anim: {fileID: 0}
+  playerCamera: {fileID: 0}
+  walkSpeed: 2
+  runSpeed: 5
+  mouseSensitivity: 2
+  jumpHeight: 1.5
+  gravity: -15
+  groundCheckDistance: 0.2
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 1
 --- !u!1 &1666818980
 GameObject:
   m_ObjectHideFlags: 0
