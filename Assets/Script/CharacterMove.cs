@@ -7,7 +7,7 @@ public class FirstPersonCharacterController : MonoBehaviour
     [Header("组件引用")]
     public Animator anim;
     private CharacterController controller;
-    public Camera playerCamera; // 第一人称摄像头
+    public Camera playerCamera;
 
     [Header("移动设置")]
     public float walkSpeed = 2f;
@@ -43,20 +43,18 @@ public class FirstPersonCharacterController : MonoBehaviour
     void Start()
     {
         // 获取组件
-        anim = GetComponent<Animator>();
         controller = GetComponent<CharacterController>();
-
-        // 如果没有指定摄像头，使用主摄像头
+        // 使用主摄像头(无其他摄像头时）
         if (playerCamera == null)
         {
             playerCamera = Camera.main;
         }
 
         // 确保摄像头是角色的子对象
-        if (playerCamera.transform.parent != transform)
+        if (playerCamera != null && playerCamera.transform.parent != transform)
         {
             playerCamera.transform.SetParent(transform);
-            playerCamera.transform.localPosition = new Vector3(0, 1.6f, 0); // 眼睛高度
+            playerCamera.transform.localPosition = new Vector3(0, 1.6f, 0);
         }
 
         // 如果没有CharacterController，自动添加
@@ -74,6 +72,24 @@ public class FirstPersonCharacterController : MonoBehaviour
 
         // 锁定光标到屏幕中心
         Cursor.lockState = CursorLockMode.Locked;
+
+        // 检查Animator组件
+        if (anim == null)
+        {
+            anim = GetComponentInChildren<Animator>();
+            if (anim == null)
+            {
+                Debug.LogError("没有找到 Animator 组件！");
+            }
+            else
+            {
+                Debug.Log("找到 Animator 组件: " + anim.name);
+            }
+        }
+        else
+        {
+            Debug.Log("Animator 已赋值: " + anim.name);
+        }
     }
 
     void Update()
@@ -103,6 +119,12 @@ public class FirstPersonCharacterController : MonoBehaviour
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
+        // 调试鼠标输入
+        if (Mathf.Abs(mouseX) > 0.01f || Mathf.Abs(mouseY) > 0.01f)
+        {
+            Debug.Log($"鼠标输入 - X: {mouseX}, Y: {mouseY}");
+        }
+
         // 左右旋转角色
         transform.Rotate(Vector3.up * mouseX);
 
@@ -122,6 +144,12 @@ public class FirstPersonCharacterController : MonoBehaviour
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
+        // 调试输入
+        if (Mathf.Abs(horizontal) > 0.01f || Mathf.Abs(vertical) > 0.01f)
+        {
+            Debug.Log($"键盘输入 - 水平: {horizontal}, 垂直: {vertical}");
+        }
+
         // 判断是否在移动
         isMoving = Mathf.Abs(horizontal) > 0.1f || Mathf.Abs(vertical) > 0.1f;
 
@@ -135,6 +163,7 @@ public class FirstPersonCharacterController : MonoBehaviour
         if (Input.GetButtonDown("Jump") && isGrounded && !isJumping)
         {
             jumpTriggered = true;
+            Debug.Log("跳跃按键被按下");
         }
     }
 
@@ -213,55 +242,52 @@ public class FirstPersonCharacterController : MonoBehaviour
         }
     }
 
+   
+
     void UpdateAnimations()
     {
         if (anim == null) return;
 
-        // 根据状态机条件设置动画参数
-        // 设置行走状态 - 当有移动输入且不在跑步状态时
-        bool shouldWalk = isMoving && !isRunning && isGrounded && !isJumping;
-        anim.SetBool(WALK_PARAM, shouldWalk);
+        AnimatorStateInfo currentState = anim.GetCurrentAnimatorStateInfo(0);
+        bool shouldWalk = isMoving && !isRunning;
+        bool shouldRun = isMoving && isRunning;
 
-        // 设置跑步状态 - 当有移动输入且在跑步状态时
-        bool shouldRun = isMoving && isRunning && isGrounded && !isJumping;
-        anim.SetBool(RUN_PARAM, shouldRun);
+        // 跳跃动画结束处理
+        if (currentState.IsName("Jump"))
+        {
+            // 在动画播放95%时强制同步状态
+            if (currentState.normalizedTime >= 0.95f && isGrounded)
+            {
+                anim.SetBool(WALK_PARAM, shouldWalk);
+                anim.SetBool(RUN_PARAM, shouldRun);
+                anim.ResetTrigger(JUMP_PARAM);
+                isJumping = false;
 
-        // 设置地面状态
+                // 立即更新状态机
+                anim.Update(0f);
+                Debug.Log("跳跃动画结束，强制状态同步");
+            }
+        }
+
+        // 常规参数更新（带状态保护）
+        anim.SetBool(WALK_PARAM, shouldWalk && isGrounded && !isJumping);
+        anim.SetBool(RUN_PARAM, shouldRun && isGrounded && !isJumping);
         anim.SetBool(GROUNDED_PARAM, isGrounded);
 
-        // 触发跳跃动画 - 只在跳跃开始时触发一次
-        if (jumpTriggered || (isJumping && !wasGrounded))
+        // 跳跃触发（带二次验证）
+        if (jumpTriggered && isGrounded && !currentState.IsName("Jump"))
         {
             anim.SetTrigger(JUMP_PARAM);
+            isJumping = true;
+            jumpTriggered = false;
+            Debug.Log("触发跳跃动画");
         }
-
-        // 重置跳跃触发器，防止重复触发
-        if (isGrounded && anim.GetCurrentAnimatorStateInfo(0).IsName("Jump"))
+        // 落地瞬间同步
+        if (!wasGrounded && isGrounded)
         {
-            anim.ResetTrigger(JUMP_PARAM);
-        }
-
-        // 特殊处理：当在Jump状态且落地时，根据移动状态决定过渡到Walk或Idle
-        if (isGrounded && wasGrounded == false && isJumping)
-        {
-            // 落地后如果正在移动，则过渡到Walk状态
-            if (isMoving)
-            {
-                anim.SetBool(WALK_PARAM, true);
-            }
-            // 否则过渡到Idle状态
-            else
-            {
-                anim.SetBool(WALK_PARAM, false);
-                anim.SetBool(RUN_PARAM, false);
-            }
-        }
-
-        // 特殊处理：从Jump到Run的条件 - 当落地后且满足跑步条件时
-        if (isGrounded && wasGrounded == false && isJumping && isMoving && isRunning)
-        {
-            anim.SetBool(RUN_PARAM, true);
-            anim.SetBool(WALK_PARAM, false);
+            anim.SetBool(WALK_PARAM, shouldWalk);
+            anim.SetBool(RUN_PARAM, shouldRun);
+            Debug.Log("着陆状态同步");
         }
     }
 
@@ -269,16 +295,31 @@ public class FirstPersonCharacterController : MonoBehaviour
     {
         isJumping = true;
         verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        Debug.Log("执行跳跃，垂直速度: " + verticalVelocity);
     }
 
     void OnLand()
     {
         isJumping = false;
+        Debug.Log("角色落地");
     }
 
     // 退出时解锁光标
     void OnDestroy()
     {
         Cursor.lockState = CursorLockMode.None;
+    }
+
+    // 添加一个简单的GUI来显示状态
+    void OnGUI()
+    {
+        GUILayout.BeginArea(new Rect(10, 10, 300, 200));
+        GUILayout.Label("第一人称控制器状态:");
+        GUILayout.Label($"移动: {isMoving}");
+        GUILayout.Label($"跑步: {isRunning}");
+        GUILayout.Label($"跳跃: {isJumping}");
+        GUILayout.Label($"地面: {isGrounded}");
+        GUILayout.Label($"垂直速度: {verticalVelocity:F2}");
+        GUILayout.EndArea();
     }
 }
