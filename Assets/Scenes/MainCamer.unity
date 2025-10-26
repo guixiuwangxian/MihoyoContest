@@ -343,6 +343,10 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 635f72503b179844787ee75ca2424923, type: 2}
+    - target: {fileID: 5866666021909216657, guid: c207202fdaf327549a88f878a897e0ab, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1694,6 +1698,8 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 1
+  cameraHeight: 1.6
+  cameraSmoothness: 10
 --- !u!114 &1171446896
 MonoBehaviour:
   m_ObjectHideFlags: 0
