@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class FirstPersonCharacterController : MonoBehaviour
+public class CharacterMove : MonoBehaviour
 {
     [Header("组件引用")]
     public Animator anim;
@@ -12,17 +12,12 @@ public class FirstPersonCharacterController : MonoBehaviour
     [Header("移动设置")]
     public float walkSpeed = 2f;
     public float runSpeed = 5f;
-    public float mouseSensitivity = 2f;
 
     [Header("跳跃与重力设置")]
     public float jumpHeight = 1.5f;
     public float gravity = -15f;
     public float groundCheckDistance = 0.2f;
     public LayerMask groundLayer = 1;
-
-    [Header("相机设置")]
-    public float cameraHeight = 1.7f; // 眼睛高度 - 直接设置
-    public float cameraSmoothness = 10f;
 
     // 状态变量
     private bool isMoving;
@@ -35,17 +30,15 @@ public class FirstPersonCharacterController : MonoBehaviour
     // 物理变量
     private float verticalVelocity;
 
-    // 视角控制
-    private float cameraPitch = 0f;
+    // 相机相关
+    private Vector3 baseCameraLocalPosition;
+    private float currentCameraForwardOffset;
 
     // 动画参数名称
     private const string WALK_PARAM = "Walk";
     private const string RUN_PARAM = "Run";
     private const string JUMP_PARAM = "Jump";
     private const string GROUNDED_PARAM = "IsGrounded";
-
-    // 相机相关
-    private Vector3 targetCameraLocalPosition;
 
     void Start()
     {
@@ -58,28 +51,23 @@ public class FirstPersonCharacterController : MonoBehaviour
             playerCamera = Camera.main;
         }
 
-        // 确保摄像头是角色的子对象
-        if (playerCamera != null && playerCamera.transform.parent != transform)
+        // 设置相机基础位置
+        if (playerCamera != null)
         {
-            playerCamera.transform.SetParent(transform);
+            baseCameraLocalPosition = new Vector3(0, 1.7f, 0);
+            playerCamera.transform.localPosition = baseCameraLocalPosition;
         }
 
-        // 如果没有CharacterController，自动添加并设置
+        // 如果没有CharacterController，自动添加
         if (controller == null)
         {
             controller = gameObject.AddComponent<CharacterController>();
-            // 设置合理的控制器尺寸
-            controller.height = 2.0f;
-            controller.center = new Vector3(0, 1, 0);
-            controller.radius = 0.3f;
+            SetupCharacterController();
         }
 
         // 设置地面层级
         if (groundLayer.value == 0)
             groundLayer = LayerMask.GetMask("Default");
-
-        // 锁定光标到屏幕中心
-        Cursor.lockState = CursorLockMode.Locked;
 
         // 检查Animator组件
         if (anim == null)
@@ -97,28 +85,23 @@ public class FirstPersonCharacterController : MonoBehaviour
             anim.applyRootMotion = false;
         }
 
-        // 初始化相机位置 - 这是关键！
-        InitializeCameraPosition();
+        currentCameraForwardOffset = 0f;
+
+        // 锁定光标到屏幕中心
+        Cursor.lockState = CursorLockMode.Locked;
     }
-
-    void InitializeCameraPosition()
+    //设置角色控制器的物理碰撞属性
+    void SetupCharacterController()
     {
-        if (playerCamera == null) return;
-
-        // 关键：直接设置相机本地位置为眼睛高度
-        // 忽略所有其他计算，直接设置
-        targetCameraLocalPosition = new Vector3(0, cameraHeight, 0);
-        playerCamera.transform.localPosition = targetCameraLocalPosition;
-        playerCamera.transform.localRotation = Quaternion.identity;
-
-        Debug.Log($"初始化相机位置: {targetCameraLocalPosition}");
+        controller.center = new Vector3(0, 1, 0);//人物的中心点位置
+        controller.height = 2.0f;//人物的高度
+        controller.radius = 0.3f;//人物的半径
+        controller.stepOffset = 0.3f;//人物能自动走的楼梯高度
+        controller.slopeLimit = 45f;//人物能行走的最大坡度
     }
 
     void Update()
     {
-        // 处理鼠标视角
-        HandleMouseLook();
-
         // 处理输入
         HandleInput();
 
@@ -133,31 +116,6 @@ public class FirstPersonCharacterController : MonoBehaviour
 
         // 保存上一帧的地面状态
         wasGrounded = isGrounded;
-    }
-
-    void LateUpdate()
-    {
-        // 在LateUpdate中确保相机位置正确
-        UpdateCameraPosition();
-    }
-
-    void HandleMouseLook()
-    {
-        // 获取鼠标输入
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
-
-        // 左右旋转角色
-        transform.Rotate(Vector3.up * mouseX);
-
-        // 上下旋转摄像头
-        cameraPitch -= mouseY;
-        cameraPitch = Mathf.Clamp(cameraPitch, -90f, 90f);
-
-        if (playerCamera != null)
-        {
-            playerCamera.transform.localEulerAngles = Vector3.right * cameraPitch;
-        }
     }
 
     void HandleInput()
@@ -230,7 +188,12 @@ public class FirstPersonCharacterController : MonoBehaviour
         // 第一人称移动：基于角色当前朝向
         Vector3 moveDirection = (transform.forward * vertical) + (transform.right * horizontal);
         moveDirection.y = 0;
-        moveDirection.Normalize();
+
+        // 只有在有输入时才标准化，避免停止时的滑动
+        if (moveDirection.magnitude > 0.1f)
+        {
+            moveDirection.Normalize();
+        }
 
         // 计算移动速度
         float currentSpeed = 0f;
@@ -242,6 +205,7 @@ public class FirstPersonCharacterController : MonoBehaviour
             }
             else
             {
+                // 空中移动速度减半
                 currentSpeed = (isRunning ? runSpeed : walkSpeed) * 0.5f;
             }
         }
@@ -257,14 +221,6 @@ public class FirstPersonCharacterController : MonoBehaviour
         }
     }
 
-    void UpdateCameraPosition()
-    {
-        if (playerCamera == null) return;
-
-        // 直接强制设置相机位置，不使用任何平滑或偏移
-        // 这是最简单的解决方案，确保相机始终在正确位置
-        playerCamera.transform.localPosition = targetCameraLocalPosition;
-    }
 
     void UpdateAnimations()
     {
@@ -275,15 +231,13 @@ public class FirstPersonCharacterController : MonoBehaviour
         bool shouldRun = isMoving && isRunning;
 
         // 跳跃动画结束处理
-        if (currentState.IsName("Jump"))
+        if (currentState.IsName("Jump") && currentState.normalizedTime >= 0.95f && isGrounded)
         {
-            if (currentState.normalizedTime >= 0.95f && isGrounded)
-            {
-                anim.SetBool(WALK_PARAM, shouldWalk);
-                anim.SetBool(RUN_PARAM, shouldRun);
-                anim.ResetTrigger(JUMP_PARAM);
-                isJumping = false;
-            }
+
+            anim.SetBool(WALK_PARAM, shouldWalk);
+            anim.SetBool(RUN_PARAM, shouldRun);
+            anim.ResetTrigger(JUMP_PARAM);
+            isJumping = false;
         }
 
         // 常规参数更新
@@ -318,37 +272,28 @@ public class FirstPersonCharacterController : MonoBehaviour
         isJumping = false;
     }
 
+    // 公开方法供其他脚本调用
+    public bool IsGrounded() => isGrounded;
+    public bool IsMoving() => isMoving;
+    public bool IsRunning() => isRunning;
+
     // 退出时解锁光标
     void OnDestroy()
     {
         Cursor.lockState = CursorLockMode.None;
     }
 
-    // 添加一个简单的GUI来显示状态
+    // 调试GUI
     void OnGUI()
     {
         GUILayout.BeginArea(new Rect(10, 10, 300, 200));
-        GUILayout.Label("第一人称控制器状态:");
+        GUILayout.Label("角色移动状态:");
         GUILayout.Label($"移动: {isMoving}");
         GUILayout.Label($"跑步: {isRunning}");
         GUILayout.Label($"跳跃: {isJumping}");
         GUILayout.Label($"地面: {isGrounded}");
         GUILayout.Label($"垂直速度: {verticalVelocity:F2}");
-        GUILayout.Label($"相机高度: {cameraHeight:F2}");
-        if (playerCamera != null)
-        {
-            GUILayout.Label($"相机实际位置: {playerCamera.transform.localPosition}");
-        }
+        GUILayout.Label($"相机前移: {currentCameraForwardOffset:F2}");
         GUILayout.EndArea();
-    }
-
-    // 在编辑器中可视化相机位置
-    void OnDrawGizmosSelected()
-    {
-        if (playerCamera != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(playerCamera.transform.position, 0.1f);
-        }
     }
 }

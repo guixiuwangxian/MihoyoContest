@@ -1691,15 +1691,12 @@ MonoBehaviour:
   playerCamera: {fileID: 0}
   walkSpeed: 2
   runSpeed: 5
-  mouseSensitivity: 2
   jumpHeight: 1.5
   gravity: -15
   groundCheckDistance: 0.2
   groundLayer:
     serializedVersion: 2
     m_Bits: 1
-  cameraHeight: 1.6
-  cameraSmoothness: 10
 --- !u!114 &1171446896
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2145,7 +2142,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 1171446893}
   mouseSensitivity: 1000
-  xRotation: 0
+  cameraHeight: 1.7
+  normalForwardOffset: 0.3
+  runForwardOffset: 0.05
+  forwardTransitionSpeed: 8
 --- !u!4 &2057978457 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c207202fdaf327549a88f878a897e0ab, type: 3}
