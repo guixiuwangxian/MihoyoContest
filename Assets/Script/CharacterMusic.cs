@@ -8,22 +8,26 @@ public class CharacterMusicController : MonoBehaviour
     public class Instruments
     {
         public string name;
-        public string leftHoldSignal;  // 左键长按信号
-        public string rightHoldSignal; // 右键长按信号
-        public Sprite icon;
+        public string leftHoldSignal;  // 左键长按信号（特殊效果）
+        public string rightHoldSignal; // 右键长按信号（基础交互）
+        public Sprite icon; // 物品栏图标（手动赋值）
+        public AudioClip holdAudio; // 长按演奏音效（预留资源位）
+        public float audioVolume = 0.7f; // 音量调节
     }
 
+    [Header("核心配置")]
     public List<Instruments> 乐器 = new List<Instruments>();
     public int 当前乐器 = 0;
+    public AudioSource musicAudioSource; // 绑定主角身上的AudioSource组件
 
-    // 标记是否正在长按（避免重复触发）
+    [Header("内部状态")]
     private bool isLeftHolding = false;
     private bool isRightHolding = false;
 
     void Update()
     {
-        // 1. 鼠标长按检测：持续触发音乐信号
-        if (Input.GetMouseButton(0)) // 左键长按
+        // 左键长按检测（含停止播放）
+        if (Input.GetMouseButton(0))
         {
             if (!isLeftHolding)
             {
@@ -38,10 +42,12 @@ public class CharacterMusicController : MonoBehaviour
             {
                 Debug.Log("结束左键演奏");
                 isLeftHolding = false;
+                StopMusic(); // 松开左键停止音乐
             }
         }
 
-        if (Input.GetMouseButton(1)) // 右键长按
+        // 右键长按检测（含停止播放）
+        if (Input.GetMouseButton(1))
         {
             if (!isRightHolding)
             {
@@ -56,10 +62,11 @@ public class CharacterMusicController : MonoBehaviour
             {
                 Debug.Log("结束右键演奏");
                 isRightHolding = false;
+                StopMusic(); // 松开右键停止音乐
             }
         }
 
-        // 2. 物品栏切换逻辑（滚轮和数字）
+        // 物品栏切换逻辑（保持原有）
         if (Input.GetAxis("Mouse ScrollWheel") > 0f)
         {
             SwitchInstrument(1);
@@ -78,19 +85,42 @@ public class CharacterMusicController : MonoBehaviour
         }
     }
 
-    // 长按演奏（持续发送信号）
+    // 长按演奏（循环播放+事件触发）
     void PlayMusicHold(int holdType)
     {
+        if (乐器.Count == 0 || musicAudioSource == null) return;
+
         Instruments currentInstrument = 乐器[当前乐器];
         string signal = holdType == 0 ? currentInstrument.leftHoldSignal : currentInstrument.rightHoldSignal;
         
+        // 配置并播放音效（仅当未播放时启动）
+        if (currentInstrument.holdAudio != null && !musicAudioSource.isPlaying)
+        {
+            musicAudioSource.clip = currentInstrument.holdAudio;
+            musicAudioSource.volume = currentInstrument.audioVolume;
+            musicAudioSource.loop = true; // 开启循环，持续演奏
+            musicAudioSource.Play();
+        }
+        
         Debug.Log($"持续演奏 {currentInstrument.name}，发送信号：{signal}");
         EventManager.TriggerEvent(signal);
-        // 此处可添加音频循环播放逻辑（后续补充）
     }
 
+    // 停止音乐播放（通用方法）
+    void StopMusic()
+    {
+        if (musicAudioSource != null && musicAudioSource.isPlaying)
+        {
+            musicAudioSource.Stop();
+            musicAudioSource.loop = false; // 重置循环状态
+        }
+    }
+
+    // 乐器切换逻辑（保持原有）
     void SwitchInstrument(int direction)
     {
+        if (乐器.Count == 0) return;
+
         当前乐器 = (当前乐器 + direction + 乐器.Count) % 乐器.Count;
         Debug.Log($"切换到乐器：{乐器[当前乐器].name}");
     }

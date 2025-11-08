@@ -29,7 +29,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     // 初始化物品槽
-    void InitInventorySlots()
+    public void InitInventorySlots()
     {
         // 清空已有槽位
         foreach (var slot in itemSlots)
