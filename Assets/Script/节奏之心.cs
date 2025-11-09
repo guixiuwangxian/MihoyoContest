@@ -2,29 +2,46 @@ using UnityEngine;
 
 public class RhythmHeartCollector : MonoBehaviour
 {
-    public float speedMultiplier = 1.5f; // 速率提升倍数
-    private bool isCollected = false; // 是否已收集（唯一标记）
+    [Header("速率设置")]
+    public float speedMultiplier = 1.5f;
 
-    void OnTriggerEnter(Collider other)
+    private int heartsCollected = 0;
+    private float currentMultiplier = 1f;
+
+    public void OnHeartCollected()
     {
-        // 仅在未收集且碰撞到节奏之心时触发
-        if (!isCollected && other.CompareTag("RhythmHeart"))
-        {
-            isCollected = true;
-            Destroy(other.gameObject); // 收集后销毁唯一实例
-            Debug.Log("获得了节奏之心！所有交互速率大幅提升");
-            UpdateAllInteractSpeed(); // 永久提升交互速率
-        }
+        heartsCollected++;
+        currentMultiplier = 1f + (heartsCollected * (speedMultiplier - 1f));
+        ApplySpeedBoost();
+
+        Debug.Log($"节奏之心收集: {heartsCollected}个, 速度倍率: {currentMultiplier}x");
     }
 
-    // 永久提升所有交互物体速率
-    void UpdateAllInteractSpeed()
+    void ApplySpeedBoost()
     {
-        // 提升旋转结构速率（螺旋号角关联）
+        // 提升旋转结构
         RotateStructureController[] rotateControllers = FindObjectsOfType<RotateStructureController>();
         foreach (var controller in rotateControllers)
         {
-            controller.IncreaseSpeed(speedMultiplier);
+            controller.IncreaseSpeed(currentMultiplier);
+        }
+
+        // 提升平移方块
+        TranslateBlock[] translateBlocks = FindObjectsOfType<TranslateBlock>();
+        foreach (var block in translateBlocks)
+        {
+            block.SetSpeedMultiplier(currentMultiplier);
+        }
+
+        // 提升旋转方块
+        RotateBlock[] rotateBlocks = FindObjectsOfType<RotateBlock>();
+        foreach (var block in rotateBlocks)
+        {
+            block.SetSpeedMultiplier(currentMultiplier);
         }
     }
+
+    // 可选：用于调试或存档
+    public int GetCollectedCount() => heartsCollected;
+    public float GetCurrentMultiplier() => currentMultiplier;
 }
